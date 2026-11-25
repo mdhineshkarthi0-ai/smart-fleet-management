@@ -1,0 +1,16 @@
+const SET=Object.assign({name:'Fleet Admin',cur:'\u20b9',price:100,hours:12,theme:'light'},(()=>{try{return JSON.parse(localStorage.getItem('sf_set')||'{}')}catch(e){return{}}})());
+function applyTheme(){document.documentElement.dataset.theme=SET.theme}
+function saveSet(){try{localStorage.setItem('sf_set',JSON.stringify(SET))}catch(e){}applyTheme()}
+const money=v=>SET.cur+fmt(v);
+function toast(m){const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
+function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function settingsPage(){
+ $('#main').innerHTML=`<div class="bar"><div><h1>Settings</h1><div class="sub">Stored only in this browser (localStorage and IndexedDB). There is no server or multi-user sync.</div></div></div>
+ <div class="box"><h2>Preferences</h2><div class="form"><div><label for="s_n">Your name</label><input id="s_n" value="${esc(SET.name)}"></div><div><label for="s_c">Currency symbol</label><input id="s_c" maxlength="4" value="${esc(SET.cur)}"></div><div><label for="s_p">Fuel price per litre</label><input id="s_p" type="number" min="0" step="0.1" value="${SET.price}"></div><div><label for="s_h">Operating hours per day</label><input id="s_h" type="number" min="1" max="24" value="${SET.hours}"></div><div><label for="s_t">Theme</label><select id="s_t"><option value="light">Light</option><option value="dark">Dark</option></select></div></div><div class="row"><button id="s_save">Save settings</button></div></div>
+ <div class="box" style="margin-top:14px"><h2>Data</h2><div class="row"><button class="alt" id="bk">Backup data (JSON)</button><input id="rs" type="file" accept=".json" aria-label="Restore backup" style="width:auto"><button class="alt" id="rst">Reset sample data</button><button class="dng" id="clr">Clear all data</button></div><div class="sub">${fmt(DB.vehicles.length)} vehicles, ${fmt(DB.drivers.length)} drivers, ${fmt(DB.trips.length)} trips, ${fmt(DB.maint.length)} maintenance records.</div></div>`;
+ $('#s_t').value=SET.theme;
+ $('#s_save').onclick=()=>{const p=+$('#s_p').value,h=+$('#s_h').value;if(!(p>=0)||!(h>=1&&h<=24)){toast('Check fuel price and operating hours.');return}SET.name=$('#s_n').value.trim()||'Fleet Admin';SET.cur=$('#s_c').value||'\u20b9';SET.price=p;SET.hours=h;SET.theme=$('#s_t').value;saveSet();$('#usr').textContent=SET.name;toast('Settings saved')};
+ $('#bk').onclick=()=>dl('smart_fleet_backup.json',JSON.stringify({version:2,db:DB}),'application/json');
+ $('#rs').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(!j.db||!Array.isArray(j.db.vehicles)||!Array.isArray(j.db.trips))throw 0;DB={routes:[],...j.db};save();toast('Backup restored');settingsPage()}catch(x){toast('That file is not a valid backup.')}};
+ $('#rst').onclick=()=>{if(confirm('Replace all data with fresh sample data?')){DB=gen(CFG);save();settingsPage()}};
+ $('#clr').onclick=()=>{if(confirm('Delete ALL vehicles, drivers, trips and maintenance records?')){DB={vehicles:[],drivers:[],trips:[],maint:[],routes:[]};save();settingsPage()}}}

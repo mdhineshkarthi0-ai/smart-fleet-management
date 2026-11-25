@@ -1,0 +1,6 @@
+/* IndexedDB persistence. Falls back to in-memory if IndexedDB is unavailable. DB_VERSION lets later versions migrate stores. */
+const DB_VERSION=1,STORES=['vehicles','drivers','trips','maint','routes','fuel','behaviour','notifications','predictions','activity'],MAIN=['vehicles','drivers','trips','maint','routes'];
+let IDB=null,saveT=null;
+function openDB(){return new Promise(res=>{if(typeof indexedDB=='undefined')return res(null);try{const q=indexedDB.open('smartfleet',DB_VERSION);q.onupgradeneeded=()=>{const d=q.result;STORES.forEach(s=>{if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id'})})};q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);q.onblocked=()=>res(null)}catch(e){res(null)}})}
+function loadAll(){return new Promise(res=>{if(!IDB)return res(null);try{const o={},t=IDB.transaction(MAIN,'readonly');MAIN.forEach(s=>{t.objectStore(s).getAll().onsuccess=e=>{o[s]=e.target.result}});t.oncomplete=()=>res(o.vehicles&&o.vehicles.length?o:null);t.onerror=()=>res(null)}catch(e){res(null)}})}
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{if(!IDB)return;try{const t=IDB.transaction(MAIN,'readwrite');MAIN.forEach(s=>{const st=t.objectStore(s);st.clear();(DB[s]||[]).forEach(r=>st.put(r))})}catch(e){toast('Could not save to IndexedDB.')}},120)}
